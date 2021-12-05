@@ -1,4 +1,12 @@
-import { Button, Flex, Icon, Image, Stack } from "@chakra-ui/react";
+import {
+  Button,
+  Flex,
+  Icon,
+  Image,
+  Select,
+  Stack,
+  FormLabel,
+} from "@chakra-ui/react";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { FaArrowLeft } from "react-icons/fa";
@@ -8,28 +16,14 @@ import * as yup from "yup";
 import { Input } from "../components/Form/Input";
 
 import LogoSkynet from "../assets/logo.png";
+import { api } from "../services/api";
 
 interface RegisterFormData {
   email: string;
   password: string;
   name: string;
-  address: string;
-  birthday: Date;
+  type: string;
 }
-
-const today = new Date();
-
-const eighteenYearsOld = new Date(
-  today.getFullYear() - 18,
-  today.getMonth(),
-  today.getDate()
-);
-
-const eightyYearsOld = new Date(
-  today.getFullYear() - 72,
-  today.getMonth(),
-  today.getDate()
-);
 
 const RegisterFormSchema = yup.object().shape({
   email: yup.string().required("E-mail é obrigatório").email("E-mail inválido"),
@@ -41,13 +35,7 @@ const RegisterFormSchema = yup.object().shape({
     .string()
     .matches(/^[A-Za-z ]*$/, "Por favor insira um nome valido")
     .required("Nome é obrigatório"),
-  address: yup.string().required("Endereço é obrigatório"),
-  birthday: yup
-    .date()
-    .transform((curr, orig) => (orig === "" ? undefined : curr))
-    .required("Sua data de nascimento é obrigatória")
-    .max(eighteenYearsOld, "Você não pode ser menor de 18 anos!")
-    .min(eightyYearsOld, "Você não pode ser mais velho do que 80 anos"),
+  type: yup.string().required("O seu tipo de conta é obrigatório"),
 });
 
 export function Register() {
@@ -63,16 +51,19 @@ export function Register() {
     values,
     event
   ) => {
-    const { email, password, address, birthday, name } = values;
+    const { email, password, name, type } = values;
+    try {
+      await api.post("/users", {
+        email,
+        password,
+        name,
+        type,
+      });
 
-    await new Promise((resolve) => {
-      setTimeout(resolve, 2000);
-    });
-
-    console.log({ email, password, address, birthday, name });
-    // const response = await api.post("/createUser", { email, password });
-
-    navigate("/");
+      navigate("/");
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   return (
@@ -108,18 +99,22 @@ export function Register() {
             error={errors.name}
             {...register("name")}
           />
-          <Input
-            label="Data de nascimento"
-            type="date"
-            error={errors.birthday}
-            {...register("birthday")}
-          />
-          <Input
-            label="Endereço"
-            type="text"
-            error={errors.address}
-            {...register("address")}
-          />
+          <Flex flexDir="column">
+            <FormLabel>Tipo de conta</FormLabel>
+
+            <Select
+              error={errors.type}
+              {...register("type")}
+              bg="gray.300"
+              borderColor="gray.500"
+              color="gray.500"
+              _hover={{ borderColor: "gray.500" }}
+            >
+              <option value="student">Estudante</option>
+              <option value="pilot">Piloto</option>
+              <option value="instructor">Instrutor</option>
+            </Select>
+          </Flex>
           <Input
             label="Senha"
             type="password"

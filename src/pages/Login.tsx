@@ -8,15 +8,17 @@ import {
   Text,
   Image,
 } from "@chakra-ui/react";
-import { Link as ReactRouterLink, useNavigate } from "react-router-dom";
+import { Link as ReactRouterLink } from "react-router-dom";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { useState } from "react";
 import * as yup from "yup";
 
 import { Input } from "../components/Form/Input";
 
 import LogoSkynet from "../assets/logo.png";
 import { useAuthContext } from "../contexts/AuthContext";
+import { ErrorAlert } from "../components/ErrorAlert";
 
 interface SignInFormData {
   email: string;
@@ -31,7 +33,8 @@ const signInSchema = yup.object().shape({
 });
 
 export function Login() {
-  const navigate = useNavigate();
+  const [isLoginError, setIsLoginError] = useState(false);
+  const [isTextError, setIsTextError] = useState("");
   const { signIn } = useAuthContext();
 
   const { register, handleSubmit, formState } = useForm({
@@ -41,12 +44,16 @@ export function Login() {
   const { errors } = formState;
 
   const handleSignIn: SubmitHandler<SignInFormData> = async (values, event) => {
-    try {
-      await signIn(values);
+    const response = await signIn(values);
 
-      navigate("/search-associate");
-    } catch (err) {
-      console.log(err);
+    if (response[0] === true) {
+      const [error, textError] = response;
+      setIsLoginError(error);
+      setIsTextError(textError);
+      console.log(isLoginError, isTextError);
+    } else {
+      setIsLoginError(false);
+      setIsTextError("");
     }
   };
 
@@ -66,6 +73,7 @@ export function Login() {
           <Image w="80px" src={LogoSkynet} alt="Logo da Skynet" size />
         </Flex>
         <Stack spacing="4">
+          {isLoginError && <ErrorAlert title={isTextError} />}
           <Input
             label="E-mail"
             type="email"

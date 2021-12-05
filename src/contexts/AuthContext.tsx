@@ -1,23 +1,23 @@
 import { createContext, ReactNode, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import cookies from "js-cookie";
 
 import { api } from "../services/api";
 
 interface Associate {
   email: string;
-  roles: Array<"student" | "instructor" | "pilot">;
+  type: "student" | "instructor" | "pilot";
+  name: string;
+  license: null | string;
 }
 
 interface SignInCredentials {
   email: string;
   password: string;
-  keepConnected: boolean;
 }
 
 interface AuthContextData {
   associate: Associate;
-  signIn: (credentials: SignInCredentials) => Promise<void>;
+  signIn: (credentials: SignInCredentials) => Promise<[boolean, string]>;
   isAuthenticated: boolean;
   signOut: () => Promise<void>;
 }
@@ -26,7 +26,11 @@ export const AuthContext = createContext({} as AuthContextData);
 
 interface LoginResponse {
   token: string;
-  roles: Array<"student" | "instructor" | "pilot">;
+  id: number;
+  name: string;
+  type: "student" | "instructor" | "pilot";
+  license: null | string;
+  email: string;
 }
 
 interface AuthContextProviderProps {
@@ -38,36 +42,40 @@ export function AuthContextProvider({ children }: AuthContextProviderProps) {
 
   const navigate = useNavigate();
 
-  const isAuthenticated = !!associate;
+  const isAuthenticated = !(
+    Object.keys(associate).length === 0 && associate.constructor === Object
+  );
 
-  async function signIn({ email, password, keepConnected }: SignInCredentials) {
+  async function signIn({
+    email,
+    password,
+  }: SignInCredentials): Promise<[boolean, string]> {
     try {
-      const response = await api.post<LoginResponse>("/login", {
+      const response = await api.post<LoginResponse>("/users/login", {
         email,
         password,
-        keepConnected,
       });
 
-      const { token, roles } = response.data;
+      const { type, name, license, email: associateEmail } = response.data;
 
-      console.log(token, roles);
+      // cookies.set("skynet.token", token, {
+      //   expire: 1 / 3, // 8 horas
+      //   domain: "/",
+      // });
 
-      cookies.set("skynet.token", token, {
-        expire: 1 / 3, // 8 horas
-        domain: "/",
-      });
+      setAssociate({ email: associateEmail, type, name, license });
 
-      if (!roles) {
-        return setAssociate({ email, roles: [] });
-      }
-      setAssociate({ email, roles });
+      navigate("/perfil");
+
+      return [false, ""];
     } catch (err) {
-      console.log(err);
+      return [true, String(err)];
     }
   }
 
   async function signOut() {
-    cookies.remove("skynet.token");
+    setAssociate({} as Associate);
+
     navigate("/");
   }
 
